@@ -22,7 +22,7 @@ def multi_slice_viewer(volume):
     ax.imshow(volume[ax.index], cmap='gray')
     fig.canvas.mpl_connect('key_press_event', process_key)
 
-s
+
 def process_key(event):
     fig = event.canvas.figure
     ax = fig.axes[0]
@@ -171,45 +171,18 @@ def plot_comparisons(original, cr=None, fiji=None, clahe=None, name="UNNAMED"):
 
 class DcmSequence:
 
-    def __init__(self, dcm_files=None, collection=None, mask_files=None, masks=None):
+    def __init__(self):
         """
         Can either load in dicoms and masks with their respective load functions or
         feed them to the constructor in lists. If the length of the image list is not equal
         to the length of the filename list then the difference is made up by appending None
         to the images or appending a number string to the files.
-        :param dcm_files: list of path names for dicoms
-        :param collection: list of dicom images
-        :param mask_files: list of path names for masks
-        :param masks: list of mask images
         """
-        if dcm_files is None:
-            dcm_files = []
-        if collection is None:
-            collection = []
-        if mask_files is None:
-            mask_files = []
-        if masks is None:
-            masks = []
 
-        if len(dcm_files) > len(collection):
-            for i in range(len(collection), len(dcm_files)):
-                collection.append(None)
-        if len(dcm_files) < len(collection):
-            for i in range(len(dcm_files), len(collection)):
-                dcm_files.append(str(i))
-
-        self.dcm_files = dcm_files
-        self.collection = collection
-
-        if len(mask_files) > len(masks):
-            for i in range(len(masks), len(mask_files)):
-                masks.append(None)
-        if len(mask_files) < len(masks):
-            for i in range(len(mask_files), len(masks)):
-                mask_files.append(str(i))
-
-        self.mask_files = mask_files
-        self.masks = masks
+        self.dcm_files = []
+        self.collection = []
+        self.mask_files = []
+        self.masks = []
 
     def load_dcm(self, src):
         """
