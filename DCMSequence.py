@@ -5,52 +5,52 @@ import glob
 import cv2
 import matplotlib.pyplot as plt
 from scipy import interpolate
-
+from typing import Union, Tuple
 
 # SLICE VIEWER
-def multi_slice_viewer(volume):
+def multi_slice_viewer(volume: np.ndarray):
     """
     Go slice-by-slice through a sequence of images stacked as a volume. Recommended to
     use for viewing the output of DcmSequence.interpolate_volume()
     :param volume: Stack of images
     :return: None
     """
+    def process_key(event):
+        f = event.canvas.figure
+        a = f.axes[0]
+        if event.key == 'left':
+            previous_slice(a)
+        elif event.key == 'right':
+            next_slice(a)
+        a.set_title(str(a.index))
+        f.canvas.draw()
+
+    def previous_slice(a):
+        vol = a.volume
+        a.index = (a.index - 1) % vol.shape[0]  # wrap around using %
+        a.images[0].set_array(vol[a.index])
+
+    def next_slice(a):
+        vol = a.volume
+        a.index = (a.index + 1) % vol.shape[0]
+        a.images[0].set_array(vol[a.index])
+
     fig, ax = plt.subplots()
     ax.volume = volume
-    ax.index = volume.shape[0] - 1
+    ax.index = 0
     ax.set_title(str(ax.index))
     ax.imshow(volume[ax.index], cmap='gray')
+    print("Use the right arrow key to go to the next slice")
+    print("Use the left arrow key to go to the previous slice")
     fig.canvas.mpl_connect('key_press_event', process_key)
 
-
-def process_key(event):
-    fig = event.canvas.figure
-    ax = fig.axes[0]
-    if event.key == 'j':
-        previous_slice(ax)
-    elif event.key == 'k':
-        next_slice(ax)
-    ax.set_title(str(ax.index))
-    fig.canvas.draw()
-
-
-def previous_slice(ax):
-    volume = ax.volume
-    ax.index = (ax.index - 1) % volume.shape[0]  # wrap around using %
-    ax.images[0].set_array(volume[ax.index])
-
-
-def next_slice(ax):
-    volume = ax.volume
-    ax.index = (ax.index + 1) % volume.shape[0]
-    ax.images[0].set_array(volume[ax.index])
 
 
 # #---------------------------------------------------------------------------------# #
 # #---------------------------------------------------------------------------------# #
 # IMAGE PROCESSING FUNCTIONS
 
-def convert_int_to_uint(img):
+def convert_int_to_uint(img: np.ndarray):
     """
     Conversion of int16 to uint16
     :param img: numpy array to convert
@@ -62,7 +62,7 @@ def convert_int_to_uint(img):
         return img.astype(np.uint16)
 
 
-def apply_clahe(img, clip_lim=40, tile_grid_size=(8, 8)):
+def apply_clahe(img: np.ndarray, clip_lim: int = 40, tile_grid_size: Tuple[int, int] = (8, 8)):
     """
     Applies CV2's clahe algorithm to an image array.
     :param img: Image to apply clahe to
@@ -77,7 +77,7 @@ def apply_clahe(img, clip_lim=40, tile_grid_size=(8, 8)):
     return clahe_img
 
 
-def apply_fiji_normalization(img):
+def apply_fiji_normalization(img: np.ndarray):
     """
     Applies a fiji normalization to reduce the given image to a 255 range. Looks exactly
     the same as the original image.
@@ -94,7 +94,7 @@ def apply_fiji_normalization(img):
     return x.astype(np.uint8)
 
 
-def apply_cr_normalization(img):
+def apply_cr_normalization(img: np.ndarray):
     """
     Applies the following normalization to reduce the image to a 0-1 range:
     img / (abs(image mean) + 3 * (image standard deviation))
@@ -112,9 +112,11 @@ def apply_cr_normalization(img):
 
 # #---------------------------------------------------------------------------------# #
 # #---------------------------------------------------------------------------------# #
+# PLOTTING PROCESSING COMPARISONS
 
-
-def plot_comparisons(original, cr=None, fiji=None, clahe=None, name="UNNAMED"):
+def plot_comparisons(original: np.ndarray, cr: Union[np.ndarray, None] = None,
+                     fiji: Union[np.ndarray, None] = None, clahe: Union[np.ndarray, None] = None,
+                     name: str = "UNNAMED"):
     """
     Visualization of the different image processing algorithms in a 2x2 grid using
     matplotlib.
@@ -151,9 +153,11 @@ def plot_comparisons(original, cr=None, fiji=None, clahe=None, name="UNNAMED"):
     ax4.get_xaxis().set_visible(False)
     ax4.get_yaxis().set_visible(False)
 
-    if cr is None or fiji is None or clahe is None:
+    if cr is None:
         cr = apply_cr_normalization(original)
+    if clahe is None:
         clahe = apply_clahe(original)
+    if fiji is None:
         fiji = apply_fiji_normalization(original)
 
     ax1.imshow(original, cmap='gray')
@@ -184,7 +188,7 @@ class DcmSequence:
         self.mask_files = []
         self.masks = []
 
-    def load_dcm(self, src):
+    def load_dcm(self, src: str):
         """
         Add a dicom to the collection
         :param src: Source directory to read the dicoms in from.
@@ -196,7 +200,7 @@ class DcmSequence:
                 self.collection.append(ds)
                 self.dcm_files.append(file)
 
-    def save_dcm(self, dest):
+    def save_dcm(self, dest: str):
         """
         Save the dicom to the destination folder.
         :param dest: destination folder
@@ -207,7 +211,7 @@ class DcmSequence:
             filename = os.path.basename(path)
             self.collection[i].save_as(os.path.join(dest, filename))
 
-    def load_mask(self, src):
+    def load_mask(self, src: str):
         """
         Add a mask to the masks
         :param src: Source directory to read the masks in from.
@@ -219,7 +223,7 @@ class DcmSequence:
                 self.masks.append(img)
                 self.mask_files.append(file)
 
-    def save_mask(self, dest):
+    def save_mask(self, dest: str):
         """
         Save the masks to the destination folder.
         :param dest: destination folder
@@ -230,7 +234,7 @@ class DcmSequence:
             filename = os.path.basename(path)
             self.collection[i].save_as(os.path.join(dest, filename))
 
-    def remove_dcm(self, **kwargs):  # works, useful with for loop of files
+    def remove_dcm(self, **kwargs):
         """
         Remove a dicom and path from the collection.
         :param kwargs: Expecting to receive name or idx of file to remove
@@ -254,7 +258,7 @@ class DcmSequence:
                 self.dcm_files.remove(self.dcm_files[idx])
                 self.collection.remove(self.collection[idx])
 
-    def resize(self, dim):
+    def resize(self, dim: Tuple[int, int]):
         """
         Resize all dicoms and masks to the same dimension.
         :param dim: desired dimension of images (rows, columns)
@@ -274,7 +278,7 @@ class DcmSequence:
             img = cv2.resize(img, dim)
             self.masks[i] = img
 
-    def imshow(self, start=0, end=None):
+    def plot_norms(self, start: int = 0, end: Union[int, None] = None):
         """
         View the dicom images in the collection from start to end indices. Press enter
         to view next image.
@@ -321,7 +325,7 @@ class DcmSequence:
         else:
             raise ValueError('end must be None or int')
 
-    def interpolate_volume(self, num_slices=4, clahe=False, norm_alg=1):
+    def interpolate_volume(self, num_slices: int = 4, clahe: bool = False, norm_alg: int = 1):
         """
         Create an interpolated volume from the image stack. This will interpolate slices of
         images between every consecutive pair of slices. The num_slices determines how
@@ -352,17 +356,17 @@ class DcmSequence:
         # visualize whole volume as slices
         for n in range(depth):
             stack[n * (num_slices + 1)] = volume[n]
-            print("SLICE NUMBER:", n)
+            print("SLICE NUMBER:", n+1)
             if n < depth - 1:
                 interp_slices = rgi(coords).reshape((num_slices, img_height, img_width)).astype(np.uint8)
                 for i in range(num_slices):
-                    print("\t", i)
+                    print("\t", i+1)
                     stack[n * (num_slices + 1) + i + 1] = interp_slices[i]
                 coords[:, 0] += 1
 
         return stack
 
-    def get_png(self, clahe=False, norm_alg=1):
+    def get_png(self, clahe: bool = False, norm_alg: int = 1):
         """
         Get list of png images and list of file names by converting the current dicoms in the
         collection to 8-bit using the preferred norm-alg.
@@ -402,7 +406,7 @@ class DcmSequence:
 
         return png_names, images
 
-    def convert_to_8bit(self, clahe=False, norm_alg=1):
+    def convert_to_8bit(self, clahe: bool = False, norm_alg: int = 1):
         """
         Convert 16-bit dicoms to 8-bit dicoms.
         :clahe: whether or not to use the CLAHE algorithm on the image beforehand
@@ -436,7 +440,7 @@ class DcmSequence:
                 self.collection[i] = new_ds
 
     @staticmethod
-    def get_new_ds(ds, name):
+    def get_new_ds(ds: pydicom.dataset.Dataset, name: str):
         """
         Create a new dicom header. Creates a new dataset object and sets all existing
         fields in ds.
