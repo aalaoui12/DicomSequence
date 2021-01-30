@@ -1,6 +1,5 @@
-from DCMSequence import *
+from DCMSequence import DcmSequence, multi_slice_viewer
 
-# DcmSequence instance
 dcms = DcmSequence()
 
 
@@ -38,7 +37,7 @@ clahe_names, clahe_images = dcms.get_png(clahe=True, norm_alg=0,
 
 # VISUALIZE NORMALIZATIONS
 # before making these transformations, you can view comparisons between the images using matplotlib
-# for as many of the images as you want. Press q to close the current plot and open the new one
+# for as many of the images as you want. Press q to close the current plot and open the next one
 dcms.imshow(start=1, end=3)
 
 
@@ -47,6 +46,14 @@ dcms.imshow(start=1, end=3)
 # this will convert ALL of the dicoms in the collection to 8-bit using whichever normalization
 # algorithm you choose. This is NOT currently reversible so be sure of which you want to use.
 dcms.convert_to_8bit(clahe=True, norm_alg=1)
+
+
+
+# INTERPOLATE VOLUME
+# to interpolate images between the slices you have
+# and you can visualize it slice-by-slice (3D rendering after interpolation coming soon)
+volume = dcms.interpolate_volume(num_slices=20, clahe=False, norm_alg=1)
+multi_slice_viewer(volume)
 
 
 
